@@ -109,6 +109,7 @@ tzdata==2024.2
 uritemplate==4.1.1
 urllib3==1.26.18
 uvicorn==0.37.0
+gunicorn
 vertexai==1.71.1
 watchfiles==0.24.0
 websockets==14.1
