@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from config.db import Base, engine
-from routers import user as user_routes
+from routers import auth as user_routes
 from routers import compliance as compliance_routes
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
