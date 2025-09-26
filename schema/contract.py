@@ -6,6 +6,7 @@ from schema.enums import JenisKontrakEnum
 class ContractBase(BaseModel):
     title: str
     description: Optional[str] = None
+    file_path: str
     jenis_kontrak: Optional[JenisKontrakEnum] = None
 
 class ContractCreate(ContractBase):
@@ -14,6 +15,7 @@ class ContractCreate(ContractBase):
 class ContractUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
+    file_path: Optional[str] = None
     jenis_kontrak: Optional[JenisKontrakEnum] = None
 
 class Contract(ContractBase):
