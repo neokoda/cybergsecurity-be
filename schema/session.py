@@ -8,6 +8,7 @@ class SessionBase(BaseModel):
     contract_id: int
     current_version_id: Optional[int] = None
     summary: Optional[str] = None
+    due_date: datetime 
     risk_status: Optional[RiskStatusEnum] = None
     status: Optional[StatusEnum] = StatusEnum.NEW
 
@@ -17,6 +18,7 @@ class SessionCreate(SessionBase):
 class SessionUpdate(BaseModel):
     current_version_id: Optional[int] = None
     summary: Optional[str] = None
+    due_date: datetime 
     risk_status: Optional[RiskStatusEnum] = None
     status: Optional[StatusEnum] = None
 

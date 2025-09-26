@@ -13,6 +13,7 @@ class Session(Base):
     contract_id = Column(Integer, ForeignKey("contracts.id"))
     current_version_id = Column(Integer, ForeignKey("contract_versions.id"))
     summary = Column(Text)
+    due_date = Column(TIMESTAMP)
     risk_status = Column(Enum(RiskStatusEnum))
     status = Column(Enum(StatusEnum))
     created_at = Column(TIMESTAMP)
