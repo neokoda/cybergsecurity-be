@@ -13,11 +13,12 @@ class Session(Base):
     contract_id = Column(Integer, ForeignKey("contracts.id"))
     current_version_id = Column(Integer, ForeignKey("contract_versions.id"))
     summary = Column(Text)
-    due_date = Column(TIMESTAMP)
+    due_date = Column(TIMESTAMP, nullable=False)
     risk_status = Column(Enum(RiskStatusEnum))
-    status = Column(Enum(StatusEnum))
+    status = Column(Enum(StatusEnum), nullable=False)
     created_at = Column(TIMESTAMP)
     updated_at = Column(TIMESTAMP)
+    
 
     contract = relationship("Contract", back_populates="sessions")
     #versions = relationship("ContractVersion", back_populates="session")
