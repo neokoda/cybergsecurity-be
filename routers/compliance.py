@@ -2,12 +2,12 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 import os
 import json
-import vertexai
+import vertexai.preview
 import PyPDF2
 import pdfplumber
 import requests
 from dotenv import load_dotenv
-from vertexai import rag
+from vertexai.preview import rag
 from vertexai.generative_models import GenerativeModel, Tool
 from google.cloud import storage
 import urllib.parse

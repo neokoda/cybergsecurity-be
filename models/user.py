@@ -17,9 +17,9 @@ class User(Base):
     )
     name = Column(String, nullable=False)
     email = Column(String, unique=True, index=True)
-    role_id = Column(Integer, ForeignKey("roles.id"))
+    password = Column(String, nullable=False)
+    role = Column(String, nullable=False)
     created_at = Column(TIMESTAMP)
     updated_at = Column(TIMESTAMP)
 
-    role = relationship("Role", back_populates="users")
     contracts = relationship("Contract", back_populates="creator")
