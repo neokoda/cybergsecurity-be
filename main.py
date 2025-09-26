@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from config.db import Base, engine
 from routers import auth as user_routes
 from routers import compliance as compliance_routes
+from routers import contract as contract_routes
 from routers import chat as chat_routes
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,6 +27,7 @@ async def root():
 
 app.include_router(user_routes.router)
 app.include_router(compliance_routes.router)
+app.include_router(contract_routes.router)
 app.include_router(chat_routes.router)
 
 Base.metadata.create_all(bind=engine)
