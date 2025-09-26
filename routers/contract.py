@@ -3,10 +3,11 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from pydantic import UUID4
+from starlette.responses import StreamingResponse
 
 from utils.auth import JWTBearerWithRole
 from utils.db import get_db
-from utils.gcs_storage import upload_file_to_gcs
+from utils.gcs_storage import upload_file_to_gcs, get_gcs_blob_for_download 
 from models.contract import Contract as ContractModel
 from schema.contract import Contract, ContractCreate, ContractUpdate
 
@@ -224,3 +225,49 @@ def get_contracts_count_by_creator(
 ):
     count = db.query(ContractModel).filter(ContractModel.created_by == creator_id).count()
     return {"count": count}
+
+@router.get("/{contract_id}/download")
+def download_contract(
+    contract_id: int,
+    db: Session = Depends(get_db),
+    # current_user=Depends(JWTBearerWithRole(roles=["user", "manager", "reviewer"]))
+):
+    db_contract = ContractCRUD.get_contract(db=db, contract_id=contract_id)
+    if db_contract is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Contract not found"
+        )
+
+    gcs_path = db_contract.file_path
+    if not gcs_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File path is missing for this contract."
+        )
+
+    try:
+        blob = get_gcs_blob_for_download(gcs_path)
+        def iterfile():
+                with blob.open('rb') as f:
+                    while True:
+                        chunk = f.read(8192)
+                        if not chunk:
+                            break
+                        yield chunk
+            
+        content_type = blob.content_type if blob.content_type else "application/octet-stream"
+        file_name = blob.name.split('/')[-1]
+        
+        return StreamingResponse(
+            iterfile(),
+            media_type=content_type,
+            headers={
+                "Content-Disposition": f"attachment; filename={file_name}"
+            }
+        )
+
+    except HTTPException as e:
+        raise e
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error during download process.")
