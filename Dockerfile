@@ -30,7 +30,7 @@ COPY . .
 # 4. **FIXED CMD**: Remove --reload and use gunicorn or the correct $PORT
 # Use the gunicorn worker manager recommended for production (better performance and stability)
 # If using gunicorn, ensure it's in your requirements.txt:
-CMD [ "gunicorn", "main:app", "--workers", "2", "--bind", "0.0.0.0:$PORT", "--worker-class", "uvicorn.workers.UvicornWorker" ]
-
+#CMD [ "gunicorn", "main:app", "--workers", "2", "--bind", "0.0.0.0:$PORT", "--worker-class", "uvicorn.workers.UvicornWorker" ]
+CMD [ "sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $PORT" ]
 # OR, use a clean uvicorn command (ensure the port is read from $PORT)
 #CMD [ "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "$PORT" ]
