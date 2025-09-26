@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import os
 import vertexai
@@ -45,43 +46,56 @@ def save_history(session_id: str, history: list):
     key = f"chat:{session_id}"
     r.set(key, json.dumps(history), ex=3600)
 
-def chat_response(session_id: str, user_message: str) -> dict:
-    try:
-        corpus_resource = f"projects/{project_id}/locations/{location}/ragCorpora/6917529027641081856"
-        retrieval_tool = Tool.from_retrieval(
-            retrieval=rag.Retrieval(
-                source=rag.VertexRagStore(
-                    rag_resources=[rag.RagResource(rag_corpus=corpus_resource)],
-                    rag_retrieval_config=rag.RagRetrievalConfig(top_k=3),
-                )
+async def stream_chat_response(session_id: str, user_message: str):
+    msg_lower = user_message.lower().strip()
+
+    if msg_lower in ["tes", "halo", "hai", "anjay"]:
+        short_reply = f"Halo 👋 maksud dari **{user_message}** apa ya?"
+        yield short_reply.encode("utf-8")
+        return
+
+    if "udah chat apa aja" in msg_lower or "riwayat" in msg_lower:
+        history = get_history(session_id)
+        if not history:
+            yield b"Belum ada chat sebelumnya."
+            return
+        chats = [f"{h['role']}: {h['content']}" for h in history]
+        reply = "Riwayat percakapan kamu:\n" + "\n".join(chats)
+        yield reply.encode("utf-8")
+        return
+
+    corpus_resource = f"projects/{project_id}/locations/{location}/ragCorpora/6917529027641081856"
+    retrieval_tool = Tool.from_retrieval(
+        retrieval=rag.Retrieval(
+            source=rag.VertexRagStore(
+                rag_resources=[rag.RagResource(rag_corpus=corpus_resource)],
+                rag_retrieval_config=rag.RagRetrievalConfig(top_k=3),
             )
         )
-        model = GenerativeModel("gemini-2.5-flash", tools=[retrieval_tool])
-        history = get_history(session_id)
-        
-        messages = []
-        messages.append(Content(role="user", parts=[Part.from_text("Kamu adalah chatbot yang ramah dan natural. Jawab pertanyaan dengan santai seperti teman ngobrol. Gunakan RAG hanya untuk memvalidasi informasi hukum jika diperlukan, tapi jangan langsung kasih informasi berlebihan.")]))
-        messages.append(Content(role="model", parts=[Part.from_text("Baik! Saya siap ngobrol dengan santai.")]))
-        
-        for h in history[-6:]:
-            role = "user" if h["role"] == "user" else "model"
-            messages.append(Content(role=role, parts=[Part.from_text(h["content"])]))
-        
-        messages.append(Content(role="user", parts=[Part.from_text(user_message)]))
-
-        response = model.generate_content(messages)
-
-        history.append({"role": "user", "content": user_message})
-        history.append({"role": "assistant", "content": response.text})
-        
-        if len(history) > 20:
-            history = history[-20:]
-        
-        save_history(session_id, history)
-
-        return {"response": response.text, "sources": []}
-    except Exception as e:
-        return {"response": f"Error: {str(e)}", "sources": []}
+    )
+    model = GenerativeModel("gemini-2.5-flash", tools=[retrieval_tool])
+    history = get_history(session_id)
+    messages = []
+    for h in history[-6:]:
+        role = "user" if h["role"] == "user" else "model"
+        messages.append(Content(role=role, parts=[Part.from_text(h["content"])]))
+    messages.append(Content(role="user", parts=[Part.from_text(user_message)]))
+    response = model.generate_content(messages, stream=True)
+    history.append({"role": "user", "content": user_message})
+    final_text = ""
+    for chunk in response:
+        if chunk.candidates and chunk.candidates[0].content.parts:
+            text = chunk.candidates[0].content.parts[0].text
+            if text:
+                final_text += text
+                yield text.encode("utf-8")
+                await asyncio.sleep(0)
+    if not final_text.strip():
+        final_text = "Maaf, belum ada jawaban yang relevan."
+    history.append({"role": "assistant", "content": final_text})
+    if len(history) > 20:
+        history = history[-20:]
+    save_history(session_id, history)
 
 def rag_response(session_id: str, query: str) -> dict:
     try:
@@ -95,20 +109,17 @@ def rag_response(session_id: str, query: str) -> dict:
             )
         )
         model = GenerativeModel("gemini-2.5-flash", tools=[retrieval_tool])
-
-        prompt = f"Berdasarkan dokumen hukum yang tersedia, jelaskan tentang: {query}"
+        prompt = f"Ringkas kontrak ini sesuai konteks hukum Indonesia: {query}"
         response = model.generate_content(prompt)
-
         return {"response": response.text, "sources": []}
     except Exception as e:
         return {"response": f"Error: {str(e)}", "sources": []}
 
-@router.post("/chat", response_model=ChatResponse)
-def chat(request: ChatRequest):
+@router.post("/chat/stream")
+async def chat_stream(request: ChatRequest):
     if not request.message.strip():
         raise HTTPException(status_code=400, detail="Pesan tidak boleh kosong")
-    result = chat_response(request.session_id, request.message)
-    return ChatResponse(response=result["response"], sources=result["sources"])
+    return StreamingResponse(stream_chat_response(request.session_id, request.message), media_type="text/plain")
 
 @router.post("/summarize", response_model=ChatResponse)
 def summarize(request: SummarizeRequest):
