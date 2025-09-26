@@ -27,7 +27,7 @@ app.add_middleware(
 async def root():
     return {"message": "NeoContract API"}
 
-app.include_router(user_routes.router)
+app.include_router(user_routes.router, tags=["Users"])
 # app.include_router(auth_routes.router,prefix="/api/v1/auth", tags=["Authentication"])
 # app.include_router(game.router,prefix="/api/v1", tags=["Games"])
 
