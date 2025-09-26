@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from pydantic import UUID4, BaseModel
-from enums import JenisKontrakEnum
+from schema.enums import JenisKontrakEnum
 
 class ContractBase(BaseModel):
     title: str
@@ -9,7 +9,7 @@ class ContractBase(BaseModel):
     jenis_kontrak: Optional[JenisKontrakEnum] = None
 
 class ContractCreate(ContractBase):
-    created_by: UUID4
+    pass
 
 class ContractUpdate(BaseModel):
     title: Optional[str] = None

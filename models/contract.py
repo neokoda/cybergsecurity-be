@@ -1,7 +1,7 @@
 from sqlalchemy import TIMESTAMP, UUID, Column, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 from config.db import Base
-from .enums import JenisKontrakEnum
+from models.enums import JenisKontrakEnum
 
     
 class Contract(Base):
@@ -9,6 +9,7 @@ class Contract(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
+    file_path = Column(String)
     description = Column(Text)
     jenis_kontrak = Column(Enum(JenisKontrakEnum))
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.uuid"))

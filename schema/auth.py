@@ -2,10 +2,10 @@ from enum import Enum
 from pydantic import BaseModel, EmailStr
 
 class UserRole(str, Enum):
-    STAFF = "Staff"
-    LAW = "Law"
-    MANAGEMENT = "Management"
-    ADMIN = "Admin"
+    STAFF = "user"
+    LAW = "reviewer"
+    MANAGEMENT = "manager"
+    ADMIN = "admin"
 
 class UserCreate(BaseModel):
     full_name: str
