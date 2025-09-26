@@ -5,7 +5,7 @@ from models import user as user_model
 from schema import auth as auth_schema
 from schema.token import Token
 from utils.db import get_db
-from utils.auth import AuthHandler
+from utils.auth import AuthHandler, JWTBearerWithRole
 
 auth_handler = AuthHandler()
     
@@ -14,10 +14,8 @@ router = APIRouter(
     tags=["Authentication"]
 )
 
-
-
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
-def register_user(user: auth_schema.UserCreate, db: Session = Depends(get_db)):
+def register_user(user: auth_schema.UserCreate, db: Session = Depends(get_db), current_user=Depends(JWTBearerWithRole(roles=["admin"]))):
     existing_user = db.query(user_model.User).filter(user_model.User.email == user.email).first()
     if existing_user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User with this email already exists")
