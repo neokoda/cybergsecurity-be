@@ -11,22 +11,27 @@ auth_handler = AuthHandler()
     
 router = APIRouter(
     prefix="/api/auth",
-    tags=["auth"]
+    tags=["Authentication"]
 )
+
+
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 def register_user(user: auth_schema.UserCreate, db: Session = Depends(get_db)):
-    existing_user = db.query(user_model.User).filter(user_model.User.Email == user.email).first()
+    existing_user = db.query(user_model.User).filter(user_model.User.email == user.email).first()
     if existing_user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User with this email already exists")
 
     hashed_password = auth_handler.get_password_hash(user.password)
+    now = datetime.now(timezone.utc)
 
     new_user = user_model.User(
-        FullName=user.full_name, 
-        Email=user.email,
-        Password=hashed_password,
-        Role=user.role
+        name=user.full_name, 
+        email=user.email,
+        password=hashed_password,
+        role=user.role,
+        created_at=now,
+        updated_at=now
     )
 
     db.add(new_user)
@@ -35,7 +40,7 @@ def register_user(user: auth_schema.UserCreate, db: Session = Depends(get_db)):
 
     access_token_expires = timedelta(minutes=60)
     access_token = auth_handler.create_access_token(
-        data={"email": new_user.Email, "role": new_user.Role}, 
+        data={"email": new_user.email, "role": new_user.role}, 
         expires_delta=access_token_expires
     )
     
@@ -43,18 +48,23 @@ def register_user(user: auth_schema.UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login_user(user_data: auth_schema.UserLogin, db: Session = Depends(get_db)):
-    user = db.query(user_model.User).filter(user_model.User.Email == user_data.email).first()
+    user = db.query(user_model.User).filter(user_model.User.email == user_data.email).first()
 
-    if user is None or not auth_handler.verify_password(user_data.password, user.Password):
+    if user is None or not auth_handler.verify_password(user_data.password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # update last login timestamp
+    user.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(user)
+
     access_token_expires = timedelta(minutes=60)
     access_token = auth_handler.create_access_token(
-        data={"email": user.Email, "role": user.Role}, 
+        data={"email": user.email, "role": user.role}, 
         expires_delta=access_token_expires
     )
 

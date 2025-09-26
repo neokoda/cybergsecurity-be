@@ -12,4 +12,4 @@ class ContractVersion(Base):
     uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.uuid"))
     created_at = Column(TIMESTAMP)
 
-    session = relationship("Session", back_populates="versions")
+    #session = relationship("Session", back_populates="versions")

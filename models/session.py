@@ -19,7 +19,7 @@ class Session(Base):
     updated_at = Column(TIMESTAMP)
 
     contract = relationship("Contract", back_populates="sessions")
-    versions = relationship("ContractVersion", back_populates="session")
+    #versions = relationship("ContractVersion", back_populates="session")
     comments = relationship("Comment", back_populates="session")
     chatlogs = relationship("ChatLog", back_populates="session")
     references = relationship("SessionReference", back_populates="session")

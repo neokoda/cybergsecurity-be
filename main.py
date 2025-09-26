@@ -4,7 +4,6 @@ from routers import auth as user_routes
 from routers import compliance as compliance_routes
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
-import firebase_admin
 import pathlib
 import os
 import uvicorn
