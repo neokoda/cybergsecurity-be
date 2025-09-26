@@ -2,9 +2,9 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 import os
 import json
-import vertexai
+import vertexai.preview
 from dotenv import load_dotenv
-from vertexai import rag
+from vertexai.preview import rag
 from vertexai.generative_models import GenerativeModel, Tool
 
 load_dotenv()
@@ -19,7 +19,7 @@ if credentials_path:
 
 vertexai.init(project=project_id, location=location)
 
-router = APIRouter(prefix="/chatbot", tags=["chatbot"])
+router = APIRouter(prefix="/api/chatbot", tags=["Chatbot"])
 
 class ChatRequest(BaseModel):
     message: str

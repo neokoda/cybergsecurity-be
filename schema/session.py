@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
-from enums import RiskStatusEnum, StatusEnum
+from schema.enums import RiskStatusEnum, StatusEnum
 
 
 class SessionBase(BaseModel):

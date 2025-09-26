@@ -11,5 +11,3 @@ class DocumentReference(Base):
     file_path = Column(String)
     created_at = Column(TIMESTAMP)
     updated_at = Column(TIMESTAMP)
-
-    session_refs = relationship("SessionReference", back_populates="reference")
