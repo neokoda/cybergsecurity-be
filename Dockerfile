@@ -3,6 +3,9 @@ FROM python:3.11-slim
 # Set the working directory
 WORKDIR /neocontract-be
 
+RUN apt-get update && apt-get install -y \
+    build-essential gcc libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 # Copy the requirements file
 COPY requirements.txt .
 
@@ -13,7 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Expose the application port
-EXPOSE 8000
+EXPOSE 8080
 
 # Run the application
-CMD [ "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload" ]
+CMD [ "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", "--reload" ]
