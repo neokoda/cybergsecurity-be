@@ -7,7 +7,6 @@ from .session import Session
 from .contract_version import ContractVersion
 from .comment import Comment
 from .chat_log import ChatLog
-from .workflow import Workflow
 from .document_reference import DocumentReference
 from .session_reference import SessionReference
 

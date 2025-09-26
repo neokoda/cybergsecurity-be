@@ -48,6 +48,7 @@ class ContractCRUD:
             return None
         
         update_data = contract_update.dict(exclude_unset=True)
+        
         if update_data:
             update_data['updated_at'] = datetime.utcnow()
             for field, value in update_data.items():
@@ -150,13 +151,41 @@ def update_contract(
 @router.patch("/{contract_id}", response_model=Contract)
 def partial_update_contract(
     contract_id: int,
-    contract_update: ContractUpdate,
+    title: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    jenis_kontrak: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     current_user=Depends(JWTBearerWithRole(roles=["user"]))
 ):
+    db_contract_existing = ContractCRUD.get_contract(db=db, contract_id=contract_id)
+    if not db_contract_existing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contract not found")
+        
+    new_file_path = None
+    if file and file.filename:
+        upload_title = title if title is not None else db_contract_existing.title
+        new_file_path = upload_file_to_gcs(file, upload_title)
+        
+    update_data = {}
+    if title is not None:
+        update_data["title"] = title
+    if description is not None:
+        update_data["description"] = description
+    if jenis_kontrak is not None:
+        update_data["jenis_kontrak"] = jenis_kontrak
+    
+    if new_file_path:
+        update_data["file_path"] = new_file_path
+        
+    contract_update = ContractUpdate(**update_data)
+    
     db_contract = ContractCRUD.update_contract(
-        db=db, contract_id=contract_id, contract_update=contract_update
+        db=db, 
+        contract_id=contract_id, 
+        contract_update=contract_update
     )
+    
     if db_contract is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
