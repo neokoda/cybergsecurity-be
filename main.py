@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from config.db import Base, engine
 from routers import user as user_routes
+from routers import compliance as compliance_routes
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
+import firebase_admin
 import pathlib
 import os
 import uvicorn
@@ -22,7 +24,8 @@ app.add_middleware(
 async def root():
     return {"message": "NeoContract API"}
 
-app.include_router(user_routes.router, tags=["Users"])
+app.include_router(user_routes.router)
+app.include_router(compliance_routes.router)
 
 Base.metadata.create_all(bind=engine)
 
