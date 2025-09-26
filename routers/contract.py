@@ -9,7 +9,7 @@ from utils.db import get_db
 from models.contract import Contract as ContractModel
 from schema.contract import Contract, ContractCreate, ContractUpdate
 
-router = APIRouter(prefix="/contracts", tags=["contracts"])
+router = APIRouter(prefix="/contracts", tags=["Contracts"])
 
 class ContractCRUD:
     @staticmethod

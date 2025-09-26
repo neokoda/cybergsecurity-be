@@ -2,11 +2,11 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 import os
 import json
-import vertexai.preview
 import PyPDF2
 import pdfplumber
 import requests
 from dotenv import load_dotenv
+import vertexai.preview
 from vertexai.preview import rag
 from vertexai.generative_models import GenerativeModel, Tool
 from google.cloud import storage
@@ -24,7 +24,7 @@ if credentials_path:
 
 vertexai.init(project=project_id, location=location)
 
-router = APIRouter(prefix="/compliance", tags=["compliance"])
+router = APIRouter(prefix="/api/compliance", tags=["Compliance"])
 
 class ComplianceRequest(BaseModel):
     file_url: str
