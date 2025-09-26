@@ -1,15 +1,16 @@
 from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from pydantic import UUID4
 
 from utils.auth import JWTBearerWithRole
 from utils.db import get_db
+from utils.gcs_storage import upload_file_to_gcs
 from models.contract import Contract as ContractModel
 from schema.contract import Contract, ContractCreate, ContractUpdate
 
-router = APIRouter(prefix="/contracts", tags=["contracts"])
+router = APIRouter(prefix="/api/contracts", tags=["contracts"])
 
 class ContractCRUD:
     @staticmethod
@@ -25,11 +26,12 @@ class ContractCRUD:
         return db.query(ContractModel).filter(ContractModel.created_by == creator_id).offset(skip).limit(limit).all()
     
     @staticmethod
-    def create_contract(db: Session, contract: ContractCreate, current_user) -> ContractModel:
+    def create_contract(db: Session, contract_data: ContractCreate, file_path: str, current_user) -> ContractModel:
         db_contract = ContractModel(
-            title=contract.title,
-            description=contract.description,
-            jenis_kontrak=contract.jenis_kontrak,
+            title=contract_data.title,
+            description=contract_data.description,
+            jenis_kontrak=contract_data.jenis_kontrak,
+            file_path=file_path,
             created_by=current_user.uuid,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow()
@@ -67,11 +69,29 @@ class ContractCRUD:
 
 @router.post("/", response_model=Contract, status_code=status.HTTP_201_CREATED)
 def create_contract(
-    contract: ContractCreate,
+    title: str = Form(...),
+    description: str = Form(...),
+    jenis_kontrak: str = Form(...),
+    file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user=Depends(JWTBearerWithRole(roles=["user"]))
 ):
-    return ContractCRUD.create_contract(db=db, contract=contract, current_user=current_user)
+    
+    file_path = upload_file_to_gcs(file, title)
+    
+    contract_data = ContractCreate(
+        title=title,
+        description=description,
+        jenis_kontrak=jenis_kontrak,
+        file_path=file_path
+    )
+    
+    return ContractCRUD.create_contract(
+        db=db, 
+        contract_data=contract_data, 
+        file_path=file_path,
+        current_user=current_user
+    )
 
 @router.get("/", response_model=List[Contract])
 def get_contracts(
@@ -92,7 +112,7 @@ def get_contract(
     db_contract = ContractCRUD.get_contract(db=db, contract_id=contract_id)
     if db_contract is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status.HTTP_400_NOT_FOUND,
             detail="Contract not found"
         )
     return db_contract

@@ -4,7 +4,7 @@ import os
 import json
 import vertexai
 from dotenv import load_dotenv
-from vertexai import rag
+from vertexai.preview import rag
 from vertexai.generative_models import GenerativeModel, Tool
 
 load_dotenv()
