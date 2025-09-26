@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from models.session import Session as SessionModel
 from models.contract import Contract
@@ -14,6 +14,7 @@ def seed_sessions(db: Session):
             "contract_id": contracts[0].id,
             "current_version_id": versions[1].id if len(versions) > 1 else versions[0].id,
             "summary": "Review kontrak sistem manajemen dokumen digital. Perlu revisi pada klausul keamanan data.",
+            "due_date": datetime.now() + timedelta(days=30),
             "risk_status": RiskStatusEnum.RISK,
             "status": StatusEnum.ON_REVIEW,
             "created_at": datetime.now(),
@@ -23,6 +24,7 @@ def seed_sessions(db: Session):
             "contract_id": contracts[1].id,
             "current_version_id": versions[2].id if len(versions) > 2 else versions[0].id,
             "summary": "Kontrak pengadaan server dalam tahap verifikasi teknis.",
+            "due_date": datetime.now() + timedelta(days=45),
             "risk_status": RiskStatusEnum.COMPLY,
             "status": StatusEnum.ON_VERIFICATION,
             "created_at": datetime.now(),
@@ -32,6 +34,7 @@ def seed_sessions(db: Session):
             "contract_id": contracts[2].id,
             "current_version_id": versions[3].id if len(versions) > 3 else versions[0].id,
             "summary": "Kemitraan strategis telah disetujui dan siap untuk implementasi.",
+            "due_date": datetime.now() + timedelta(days=60),
             "risk_status": RiskStatusEnum.COMPLY,
             "status": StatusEnum.ACCEPTED,
             "created_at": datetime.now(),
@@ -41,6 +44,7 @@ def seed_sessions(db: Session):
             "contract_id": contracts[3].id,
             "current_version_id": versions[4].id if len(versions) > 4 else versions[0].id,
             "summary": "Kontrak integrasi logistik masih dalam review awal.",
+            "due_date": datetime.now() + timedelta(days=15),
             "risk_status": RiskStatusEnum.COMPLY,
             "status": StatusEnum.NEW,
             "created_at": datetime.now(),
@@ -50,6 +54,7 @@ def seed_sessions(db: Session):
             "contract_id": contracts[4].id,
             "current_version_id": versions[5].id if len(versions) > 5 else versions[0].id,
             "summary": "Platform pelabuhan digital mengalami konflik pada terms and conditions.",
+            "due_date": datetime.now() + timedelta(days=20),
             "risk_status": RiskStatusEnum.RISK,
             "status": StatusEnum.CONFLICT,
             "created_at": datetime.now(),
