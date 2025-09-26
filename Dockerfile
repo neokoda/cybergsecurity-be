@@ -15,6 +15,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the application files
 COPY . .
 
+ENV PORT=8080
 # Expose the application port
 EXPOSE 8080
 
