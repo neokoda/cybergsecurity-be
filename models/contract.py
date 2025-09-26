@@ -17,5 +17,4 @@ class Contract(Base):
     updated_at = Column(TIMESTAMP)
 
     creator = relationship("User", back_populates="contracts")
-    sessions = relationship("Session", back_populates="contract")
-    workflows = relationship("Workflow", back_populates="contract")
+    sessions = relationship("Session", back_populates="contracts")

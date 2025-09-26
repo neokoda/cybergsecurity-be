@@ -8,7 +8,7 @@ class SessionReferenceBase(BaseModel):
     session_id: int
     reference_id: int
     notes: Optional[str] = None
-    validated_by: Optional[UUID4] = None
+    validated_by: UUID4
 
 class SessionReferenceCreate(SessionReferenceBase):
     pass

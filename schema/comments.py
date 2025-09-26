@@ -11,6 +11,9 @@ class CommentBase(BaseModel):
 class CommentCreate(CommentBase):
     pass
 
+class CommentUpdate(BaseModel):
+    comment: Optional[str] = None
+
 class Comment(CommentBase):
     id: int
     created_at: Optional[datetime] = None
