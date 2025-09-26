@@ -111,3 +111,4 @@ uvicorn==0.37.0
 vertexai==1.71.1
 watchfiles==0.24.0
 websockets==14.1
+redis==6.4.0

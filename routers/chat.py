@@ -4,12 +4,11 @@ from pydantic import BaseModel
 import os
 import vertexai
 from dotenv import load_dotenv
-# from vertexai import rag
 from vertexai.generative_models import GenerativeModel, Tool, Content, Part
 import redis
 import json
 from vertexai.preview import rag
-# from vertexai.generative_models import GenerativeModel, Tool
+import asyncio
 
 load_dotenv()
 
@@ -48,12 +47,10 @@ def save_history(session_id: str, history: list):
 
 async def stream_chat_response(session_id: str, user_message: str):
     msg_lower = user_message.lower().strip()
-
     if msg_lower in ["tes", "halo", "hai", "anjay"]:
         short_reply = f"Halo 👋 maksud dari **{user_message}** apa ya?"
         yield short_reply.encode("utf-8")
         return
-
     if "udah chat apa aja" in msg_lower or "riwayat" in msg_lower:
         history = get_history(session_id)
         if not history:
@@ -63,13 +60,11 @@ async def stream_chat_response(session_id: str, user_message: str):
         reply = "Riwayat percakapan kamu:\n" + "\n".join(chats)
         yield reply.encode("utf-8")
         return
-
     corpus_resource = f"projects/{project_id}/locations/{location}/ragCorpora/6917529027641081856"
     retrieval_tool = Tool.from_retrieval(
         retrieval=rag.Retrieval(
             source=rag.VertexRagStore(
                 rag_resources=[rag.RagResource(rag_corpus=corpus_resource)],
-                rag_retrieval_config=rag.RagRetrievalConfig(top_k=3),
             )
         )
     )
@@ -104,7 +99,6 @@ def rag_response(session_id: str, query: str) -> dict:
             retrieval=rag.Retrieval(
                 source=rag.VertexRagStore(
                     rag_resources=[rag.RagResource(rag_corpus=corpus_resource)],
-                    rag_retrieval_config=rag.RagRetrievalConfig(top_k=5),
                 )
             )
         )
