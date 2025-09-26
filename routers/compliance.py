@@ -4,6 +4,7 @@ import os
 import json
 import vertexai.preview
 import PyPDF2
+import pdfplumber
 import requests
 from dotenv import load_dotenv
 from vertexai.preview import rag
@@ -23,10 +24,7 @@ if credentials_path:
 
 vertexai.init(project=project_id, location=location)
 
-router = APIRouter(
-    prefix="/compliance",
-    tags=["Compliance"]
-)
+router = APIRouter(prefix="/compliance", tags=["compliance"])
 
 class ComplianceRequest(BaseModel):
     file_url: str
@@ -37,17 +35,25 @@ class ComplianceResponse(BaseModel):
 
 def download_file_from_url(url: str) -> str:
     if "storage.googleapis.com" in url:
-        return download_from_gcs(url)
+        try:
+            return download_from_gcs(url)
+        except:
+            return download_with_requests(url)
     else:
-        response = requests.get(url)
-        if response.status_code != 200:
-            raise HTTPException(status_code=400, detail="Cannot download file from URL")
-        
-        temp_filename = f"temp_{hash(url)}.tmp"
-        with open(temp_filename, 'wb') as f:
-            f.write(response.content)
-        
-        return temp_filename
+        return download_with_requests(url)
+
+def download_with_requests(url: str) -> str:
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        raise HTTPException(status_code=400, detail=f"Cannot download file: HTTP {response.status_code}")
+    
+    file_extension = ".pdf" if url.lower().endswith('.pdf') else ".txt"
+    temp_filename = f"temp_{hash(url)}{file_extension}"
+    with open(temp_filename, 'wb') as f:
+        f.write(response.content)
+    
+    return temp_filename
 
 def download_from_gcs(url: str) -> str:
     try:
@@ -65,7 +71,8 @@ def download_from_gcs(url: str) -> str:
         bucket = client.bucket(bucket_name)
         blob = bucket.blob(blob_name)
         
-        temp_filename = f"temp_{hash(url)}.tmp"
+        file_extension = ".pdf" if url.lower().endswith('.pdf') else ".txt"
+        temp_filename = f"temp_{hash(url)}{file_extension}"
         blob.download_to_filename(temp_filename)
         
         return temp_filename
@@ -77,86 +84,122 @@ def read_file_content(file_path: str) -> str:
     file_extension = os.path.splitext(file_path)[1].lower()
     
     if file_extension == '.pdf':
-        with open(file_path, 'rb') as file:
-            pdf_reader = PyPDF2.PdfReader(file)
-            content = ""
-            for page in pdf_reader.pages:
-                content += page.extract_text() + "\n"
-            return content
+        content = ""
+        
+        try:
+            with pdfplumber.open(file_path) as pdf:
+                for page in pdf.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        content += page_text + "\n"
+                if content.strip():
+                    print(f"DEBUG: pdfplumber success, length: {len(content)}")
+                    return content
+                else:
+                    print("DEBUG: pdfplumber extracted empty content")
+        except Exception as e:
+            print(f"DEBUG: pdfplumber failed: {e}")
+        
+        try:
+            with open(file_path, 'rb') as file:
+                pdf_reader = PyPDF2.PdfReader(file)
+                content = ""
+                for page in pdf_reader.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        content += page_text + "\n"
+                if content.strip():
+                    print(f"DEBUG: PyPDF2 success, length: {len(content)}")
+                    return content
+                else:
+                    print("DEBUG: PyPDF2 extracted empty content")
+        except Exception as e:
+            print(f"DEBUG: PyPDF2 failed: {e}")
+        
+        return "Error: PDF tidak mengandung teks yang dapat diekstrak atau merupakan PDF berbasis gambar"
     else:
         try:
             with open(file_path, 'r', encoding='utf-8') as file:
-                return file.read()
+                content = file.read()
+                if content.startswith('%PDF'):
+                    return "Error: File PDF tidak dapat dibaca sebagai teks"
+                return content
         except UnicodeDecodeError:
-            with open(file_path, 'r', encoding='latin-1') as file:
-                return file.read()
+            try:
+                with open(file_path, 'r', encoding='latin-1') as file:
+                    content = file.read()
+                    if content.startswith('%PDF'):
+                        return "Error: File PDF tidak dapat dibaca sebagai teks"
+                    return content
+            except Exception as e:
+                return f"Error: Tidak dapat membaca file - {str(e)}"
 
 def evaluate_file_compliance(file_content: str) -> dict:
+    if len(file_content.strip()) < 50:
+        return {
+            "status": "error",
+            "summary": "Konten dokumen terlalu sedikit atau tidak dapat diekstrak dengan benar"
+        }
+    
+    if file_content.startswith("Error:"):
+        return {
+            "status": "error",
+            "summary": file_content
+        }
+    
     prompt = f"""
-    Evaluasi dokumen berikut terhadap pasal-pasal yang ada dalam database:
+    Cek apakah klausul dalam kontrak ini bertentangan dengan peraturan hukum Indonesia.
     
-    DOKUMEN:
-    {file_content}
+    KONTRAK:
+    {file_content[:8000]}
     
-    Berikan respons dalam format JSON berikut:
+    JSON response:
     {{
-        "status": "risk" atau "comply",
-        "summary": "ringkasan 1-2 paragraf tentang dokumen dan compliance terhadap pasal-pasal"
+        "status": "comply" atau "risk",
+        "summary": "Jelaskan klausul mana yang conflict dengan peraturan. Jika tidak ada conflict, tulis 'comply'"
     }}
-    
-    Status "risk" jika ada potensi konflik dengan pasal-pasal yang ada.
-    Status "comply" jika dokumen sudah sesuai dengan pasal-pasal yang berlaku.
     """
     
-    rag_retrieval_config = rag.RagRetrievalConfig(
-        top_k=10,
-        filter=rag.Filter(vector_distance_threshold=0.3),
-    )
-    
-    rag_retrieval_tool = Tool.from_retrieval(
-        retrieval=rag.Retrieval(
-            source=rag.VertexRagStore(
-                rag_resources=[
-                    rag.RagResource(rag_corpus=corpus_name)
-                ],
-                rag_retrieval_config=rag_retrieval_config,
-            ),
+    try:
+        print(f"DEBUG: project_id={project_id}, location={location}, corpus_name={corpus_name}")
+        
+        corpus_resource = f"projects/{project_id}/locations/{location}/ragCorpora/6917529027641081856"
+        
+        retrieval_tool = Tool.from_retrieval(
+            retrieval=rag.Retrieval(
+                source=rag.VertexRagStore(
+                    rag_resources=[rag.RagResource(rag_corpus=corpus_resource)],
+                    rag_retrieval_config=rag.RagRetrievalConfig(top_k=5),
+                )
+            )
         )
-    )
-    
-    rag_model = GenerativeModel(
-        model_name="gemini-2.5-flash", 
-        tools=[rag_retrieval_tool]
-    )
-    
-    response = rag_model.generate_content(prompt)
+        
+        model = GenerativeModel("gemini-2.5-pro", tools=[retrieval_tool])
+        response = model.generate_content(prompt)
+        
+    except Exception as e:
+        print(f"DEBUG: RAG error: {str(e)}")
+        return {
+            "status": "risk", 
+            "summary": f"RAG connection failed: {str(e)}"
+        }
     
     try:
         response_text = response.text.strip()
-        
-        if response_text.startswith("```json"):
-            response_text = response_text.replace("```json", "").replace("```", "").strip()
-        elif response_text.startswith("```"):
-            response_text = response_text.replace("```", "").strip()
+        response_text = response_text.replace("```json", "").replace("```", "").strip()
         
         start_idx = response_text.find('{')
         end_idx = response_text.rfind('}') + 1
         
-        if start_idx != -1 and end_idx != 0:
+        if start_idx != -1 and end_idx > start_idx:
             json_str = response_text[start_idx:end_idx]
             result = json.loads(json_str)
             return result
         else:
-            return {
-                "status": "error",
-                "summary": f"Format respons tidak valid"
-            }
+            return {"status": "risk", "summary": "Format response error"}
             
-    except json.JSONDecodeError:
-        return {
-            "status": "error", 
-            "summary": "Gagal memproses respons dari model"
-        }
+    except:
+        return {"status": "risk", "summary": "Parsing error, review manual needed"}
 
 @router.post("/evaluate", response_model=ComplianceResponse)
 def evaluate_compliance(request: ComplianceRequest):
@@ -165,6 +208,9 @@ def evaluate_compliance(request: ComplianceRequest):
     try:
         temp_file = download_file_from_url(request.file_url)
         file_content = read_file_content(temp_file)
+        
+        print(f"DEBUG: File content length: {len(file_content)}")
+        print(f"DEBUG: First 200 chars: {file_content[:200]}")
         
         if not file_content.strip():
             raise HTTPException(status_code=400, detail="File content is empty")
@@ -186,4 +232,7 @@ def evaluate_compliance(request: ComplianceRequest):
     
     finally:
         if temp_file and os.path.exists(temp_file):
-            os.remove(temp_file)
+            try:
+                os.remove(temp_file)
+            except:
+                pass
