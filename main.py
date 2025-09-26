@@ -4,6 +4,8 @@ from routers import auth as user_routes
 from routers import compliance as compliance_routes
 from routers import contract as contract_routes
 from routers import chat as chat_routes
+from routers import session as session_routes
+from routers import actions as action_routes
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 import pathlib
@@ -29,6 +31,8 @@ app.include_router(user_routes.router)
 app.include_router(compliance_routes.router)
 app.include_router(contract_routes.router)
 app.include_router(chat_routes.router)
+app.include_router(session_routes.router)
+app.include_router(action_routes.router)
 
 Base.metadata.create_all(bind=engine)
 
