@@ -174,7 +174,7 @@ def evaluate_file_compliance(file_content: str) -> dict:
             )
         )
         
-        model = GenerativeModel("gemini-2.5-pro", tools=[retrieval_tool])
+        model = GenerativeModel("gemini-2.5-flash", tools=[retrieval_tool])
         response = model.generate_content(prompt)
         
     except Exception as e:
